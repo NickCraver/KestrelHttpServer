@@ -150,7 +150,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             {
                 handle.Libuv.Check(status, out error);
             }
+
             _rawSocketInput.IncomingComplete(readCount, error);
+
+            if (errorDone)
+            {
+                _frame.Abort();
+            }
         }
 
         private Frame CreateFrame()
