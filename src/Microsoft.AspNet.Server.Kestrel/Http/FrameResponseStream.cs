@@ -12,6 +12,7 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
     {
         private readonly FrameContext _context;
         private bool _stopped;
+        private bool _aborted;
 
         public FrameResponseStream(FrameContext context)
         {
@@ -50,6 +51,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             {
                 throw new ObjectDisposedException(nameof(FrameResponseStream));
             }
+            if (_aborted)
+            {
+                throw new IOException("The request has been aborted.");
+            }
 
             return _context.FrameControl.FlushAsync(cancellationToken);
         }
@@ -75,6 +80,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             {
                 throw new ObjectDisposedException(nameof(FrameResponseStream));
             }
+            if (_aborted)
+            {
+                throw new IOException("The request has been aborted.");
+            }
 
             _context.FrameControl.Write(new ArraySegment<byte>(buffer, offset, count));
         }
@@ -85,6 +94,10 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             {
                 throw new ObjectDisposedException(nameof(FrameResponseStream));
             }
+            if (_aborted)
+            {
+                throw new IOException("The request has been aborted.");
+            }
 
             return _context.FrameControl.WriteAsync(new ArraySegment<byte>(buffer, offset, count), cancellationToken);
         }
@@ -93,6 +106,13 @@ namespace Microsoft.AspNet.Server.Kestrel.Http
             // Can't use dispose (or close) as can be disposed too early by user code
             // As exampled in EngineTests.ZeroContentLengthNotSetAutomaticallyForCertainStatusCodes
             _stopped = true;
+        }
+
+        public void Abort()
+        {
+            // We don't want to throw an ODE until the app func actually completes.
+            // If the request is aborted, we throw an IOE instead.
+            _aborted = true;
         }
     }
 }
